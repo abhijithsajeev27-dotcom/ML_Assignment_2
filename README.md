@@ -39,13 +39,16 @@ Comparison Table
 
 
 d. Model Performance Observations
-ML Model Name	Observation about Model Performance
-Logistic Regression	Achieved the highest overall performance with excellent accuracy, AUC, and MCC, indicating that the dataset is largely linearly separable and well-suited for this model.
-Decision Tree	Showed reasonable accuracy but lower AUC and MCC compared to other models, suggesting sensitivity to overfitting and limited generalization.
-kNN	Delivered very high recall and strong overall performance, but its effectiveness depends on proper feature scaling and choice of neighbors.
-Naive Bayes	Performed well despite strong independence assumptions, though its MCC was lower than ensemble models, indicating some misclassification.
-Random Forest (Ensemble)	Provided robust and stable performance across metrics by reducing variance through ensemble averaging.
-XGBoost (Ensemble)	Achieved excellent AUC and high MCC, demonstrating strong discriminative power and effective handling of feature interactions.
+
+| ML Model Name            | Observation about Model Performance                                                                                                                                       |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Logistic Regression      | Achieved the highest overall performance with excellent accuracy, AUC, and MCC, indicating that the dataset is largely linearly separable and well-suited for this model. |
+| Decision Tree            | Showed reasonable accuracy but lower AUC and MCC compared to other models, suggesting sensitivity to overfitting and limited generalization.                              |
+| kNN                      | Delivered very high recall and strong overall performance, but its effectiveness depends on proper feature scaling and choice of neighbors.                               |
+| Naive Bayes              | Performed well despite strong independence assumptions, though its MCC was lower than ensemble models, indicating some misclassification.                                 |
+| Random Forest (Ensemble) | Provided robust and stable performance across metrics by reducing variance through ensemble averaging.                                                                    |
+| XGBoost (Ensemble)       | Achieved excellent AUC and high MCC, demonstrating strong discriminative power and effective handling of feature interactions.                                            |
+
 Summary
 
 The results show that Logistic Regression, XGBoost, and Random Forest are the top-performing models for this dataset. Ensemble methods generally outperform single classifiers, while simpler models like Logistic Regression remain highly competitive due to the structured nature of the dataset. Multiple evaluation metrics, including MCC and AUC, provide a more comprehensive understanding of model performance, especially for medical diagnosis applications.
