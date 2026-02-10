@@ -1,291 +1,232 @@
-{
- "cells": [
-  {
-   "cell_type": "code",
-   "execution_count": 37,
-   "id": "a555b437-dc7d-4df8-8895-0bea2d2135ce",
-   "metadata": {},
-   "outputs": [
-    {
-     "name": "stdout",
-     "output_type": "stream",
-     "text": [
-      "Overwriting app.py\n"
-     ]
-    }
-   ],
-   "source": [
-    "%%writefile app.py\n",
-    "import pandas as pd\n",
-    "import streamlit as st\n",
-    "import joblib\n",
-    "import matplotlib.pyplot as plt\n",
-    "import seaborn as sns\n",
-    "from pathlib import Path\n",
-    "from sklearn.metrics import (\n",
-    "    accuracy_score,\n",
-    "    precision_score,\n",
-    "    recall_score,\n",
-    "    f1_score,\n",
-    "    roc_auc_score,\n",
-    "    confusion_matrix,\n",
-    "    classification_report,\n",
-    "    matthews_corrcoef\n",
-    ")\n",
-    "\n",
-    "# 1. Page Configuration\n",
-    "st.set_page_config(\n",
-    "    page_title=\"Breast Cancer Diagnostics\",\n",
-    "    page_icon=\"🩺\",\n",
-    "    layout=\"wide\"\n",
-    ")\n",
-    "\n",
-    "# Custom CSS for a professional \"Card\" look\n",
-    "st.markdown(\"\"\"\n",
-    "    <style>\n",
-    "        .block-container {padding-top: 2rem; padding-bottom: 2rem;}\n",
-    "        div[data-testid=\"stMetric\"] {\n",
-    "            background-color: #f9f9f9;\n",
-    "            border: 1px solid #e6e6e6;\n",
-    "            padding: 10px;\n",
-    "            border-radius: 5px;\n",
-    "        }\n",
-    "        .stDeployButton {display:none;}\n",
-    "        footer {visibility: hidden;}\n",
-    "    </style>\n",
-    "\"\"\", unsafe_allow_html=True)\n",
-    "\n",
-    "# 2. Setup Paths\n",
-    "BASE_DIR = Path(\".\")\n",
-    "MODEL_DIR = BASE_DIR / \"saved_models\"\n",
-    "\n",
-    "# 3. Header Section\n",
-    "c_head1, c_head2 = st.columns([1, 6])\n",
-    "\n",
-    "with c_head2:\n",
-    "    st.title(\"Diagnostic AI Dashboard\")\n",
-    "    st.markdown(\"Breast Cancer Prediction & Model Evaluation Suite\")\n",
-    "\n",
-    "st.markdown(\"---\")\n",
-    "\n",
-    "# 4. THE CONTROL DECK (Replaces Sidebar)\n",
-    "# We use an expander that is open by default.\n",
-    "with st.expander(\"⚙️ **Configuration & Data Upload**\", expanded=True):\n",
-    "    col_conf1, col_conf2 = st.columns(2, gap=\"medium\")\n",
-    "    \n",
-    "    with col_conf1:\n",
-    "        st.subheader(\"1. Select Model\")\n",
-    "        if not MODEL_DIR.exists():\n",
-    "            st.error(\"⚠️ Directory 'saved_models/' not found.\")\n",
-    "            st.stop()\n",
-    "            \n",
-    "        model_files = sorted([p.name for p in MODEL_DIR.glob(\"*.joblib\")])\n",
-    "        if not model_files:\n",
-    "            st.error(\"⚠️ No models found.\")\n",
-    "            st.stop()\n",
-    "            \n",
-    "        selected_model = st.selectbox(\"Choose a pre-trained classifier:\", model_files)\n",
-    "        model_path = MODEL_DIR / selected_model\n",
-    "        \n",
-    "        try:\n",
-    "            model = joblib.load(model_path)\n",
-    "            st.caption(f\"✅ Active Model: **{selected_model}**\")\n",
-    "        except Exception as e:\n",
-    "            st.error(f\"Error loading model: {e}\")\n",
-    "            st.stop()\n",
-    "\n",
-    "    with col_conf2:\n",
-    "        st.subheader(\"2. Upload Patient Data\")\n",
-    "        uploaded_file = st.file_uploader(\"Upload CSV (Wisconsin Dataset format)\", type=[\"csv\"])\n",
-    "\n",
-    "# --- Main Logic ---\n",
-    "if uploaded_file is None:\n",
-    "    # Show a placeholder message when empty\n",
-    "    st.info(\"👆 Please configure the model and upload a CSV file in the panel above to generate results.\")\n",
-    "    st.stop()\n",
-    "\n",
-    "# Load Data\n",
-    "df_input = pd.read_csv(uploaded_file)\n",
-    "\n",
-    "# Feature Validation\n",
-    "from sklearn.datasets import load_breast_cancer\n",
-    "ref_data = load_breast_cancer()\n",
-    "feature_names = list(ref_data.feature_names)\n",
-    "missing_cols = [c for c in feature_names if c not in df_input.columns]\n",
-    "\n",
-    "if missing_cols:\n",
-    "    st.error(f\"❌ Input CSV is missing required columns:\\n\\n{', '.join(missing_cols[:5])}...\")\n",
-    "    st.stop()\n",
-    "\n",
-    "# Predict\n",
-    "X = df_input[feature_names].values\n",
-    "predictions = model.predict(X)\n",
-    "df_output = df_input.copy()\n",
-    "df_output[\"prediction\"] = predictions\n",
-    "\n",
-    "has_proba = hasattr(model, \"predict_proba\")\n",
-    "if has_proba:\n",
-    "    proba = model.predict_proba(X)[:, 1]\n",
-    "    df_output[\"probability_malignant\"] = proba\n",
-    "\n",
-    "# --- Results Presentation ---\n",
-    "st.markdown(\"### 📊 Analysis Results\")\n",
-    "tab1, tab2, tab3 = st.tabs([\"Patient Predictions\", \"Model Performance\", \"Raw Data\"])\n",
-    "\n",
-    "with tab1:\n",
-    "    # Summary Cards\n",
-    "    n_total = len(df_output)\n",
-    "    n_mal = sum(predictions)\n",
-    "    n_ben = n_total - n_mal\n",
-    "    \n",
-    "    # Use 4 columns for a wider spread of metrics\n",
-    "    m1, m2, m3, m4 = st.columns(4)\n",
-    "    m1.metric(\"Total Patients\", n_total)\n",
-    "    m2.metric(\"Benign Cases\", n_ben)\n",
-    "    m3.metric(\"Malignant Cases\", n_mal, delta_color=\"inverse\")\n",
-    "    m4.metric(\"Risk Ratio\", f\"{(n_mal/n_total):.1%}\")\n",
-    "\n",
-    "    st.markdown(\"<br>\", unsafe_allow_html=True)\n",
-    "    \n",
-    "    # Styled Dataframe\n",
-    "    cols_to_show = [\"prediction\"] \n",
-    "    if has_proba:\n",
-    "        cols_to_show.append(\"probability_malignant\")\n",
-    "    cols_to_show += feature_names[:5]\n",
-    "    \n",
-    "    display_df = df_output[cols_to_show]\n",
-    "    \n",
-    "    def highlight_malignant(s):\n",
-    "        return ['background-color: #ffe6e6' if v == 1 else '' for v in s]\n",
-    "    \n",
-    "    st.dataframe(\n",
-    "        display_df.style.apply(highlight_malignant, subset=['prediction']),\n",
-    "        use_container_width=True\n",
-    "    )\n",
-    "    \n",
-    "    csv = df_output.to_csv(index=False).encode('utf-8')\n",
-    "    st.download_button(\"⬇️ Download Results CSV\", csv, \"predictions.csv\", \"text/csv\")\n",
-    "\n",
-    "with tab2:\n",
-    "    if \"target\" in df_input.columns:\n",
-    "        y_true = df_input[\"target\"].values\n",
-    "        y_pred = predictions\n",
-    "\n",
-    "        # Metrics Row\n",
-    "\n",
-    "        c1, c2, c3, c4, c5 = st.columns(5)\n",
-    "\n",
-    "        c1.metric(\"Accuracy\", f\"{accuracy_score(y_true, y_pred):.2%}\")\n",
-    "        c2.metric(\"Precision\", f\"{precision_score(y_true, y_pred, zero_division=0):.2%}\")\n",
-    "        c3.metric(\"Recall\", f\"{recall_score(y_true, y_pred, zero_division=0):.2%}\")\n",
-    "        c4.metric(\"F1 Score\", f\"{f1_score(y_true, y_pred, zero_division=0):.2%}\")\n",
-    "        c5.metric(\"MCC\", f\"{matthews_corrcoef(y_true, y_pred):.3f}\")\n",
-    "\n",
-    "\n",
-    "        st.divider()\n",
-    "\n",
-    "        # Layout: Confusion Matrix (Left) | AUC Gauge (Right)\n",
-    "        col_cm, col_auc = st.columns([1, 2])\n",
-    "\n",
-    "        with col_cm:\n",
-    "            st.markdown(\"**Confusion Matrix**\")\n",
-    "            cm = confusion_matrix(y_true, y_pred)\n",
-    "\n",
-    "            fig, ax = plt.subplots(figsize=(3, 3))\n",
-    "            sns.heatmap(\n",
-    "                cm,\n",
-    "                annot=True,\n",
-    "                fmt=\"d\",\n",
-    "                cmap=\"Blues\",\n",
-    "                cbar=False,\n",
-    "                square=True,\n",
-    "                xticklabels=[\"Benign\", \"Malignant\"],\n",
-    "                yticklabels=[\"Benign\", \"Malignant\"],\n",
-    "                ax=ax,\n",
-    "            )\n",
-    "            ax.set_xlabel(\"Predicted\")\n",
-    "            ax.set_ylabel(\"Actual\")\n",
-    "            fig.patch.set_alpha(0.0)\n",
-    "            ax.patch.set_alpha(0.0)\n",
-    "\n",
-    "            st.pyplot(fig, use_container_width=False)\n",
-    "\n",
-    "        with col_auc:\n",
-    "            st.markdown(\"**ROC / AUC Analysis**\")\n",
-    "            if has_proba:\n",
-    "                auc = roc_auc_score(y_true, df_output[\"probability_malignant\"])\n",
-    "                st.metric(\"AUC Score\", f\"{auc:.4f}\")\n",
-    "                st.progress(auc)\n",
-    "\n",
-    "                if auc > 0.9:\n",
-    "                    st.success(\"Excellent discrimination capability.\")\n",
-    "                elif auc > 0.7:\n",
-    "                    st.warning(\"Acceptable discrimination capability.\")\n",
-    "                else:\n",
-    "                    st.error(\"Poor model performance.\")\n",
-    "            else:\n",
-    "                st.info(\"Model does not support probabilities.\")\n",
-    "\n",
-    "        st.divider()\n",
-    "\n",
-    "        # ---- Classification Report (below the two-column layout) ----\n",
-    "        st.markdown(\"**Classification Report**\")\n",
-    "\n",
-    "        report_dict = classification_report(\n",
-    "            y_true,\n",
-    "            y_pred,\n",
-    "            target_names=[\"Benign\", \"Malignant\"],\n",
-    "            output_dict=True,\n",
-    "            zero_division=0,\n",
-    "        )\n",
-    "        report_df = pd.DataFrame(report_dict).transpose().round(3)\n",
-    "\n",
-    "        st.dataframe(report_df, use_container_width=True)\n",
-    "\n",
-    "    else:\n",
-    "        st.warning(\"⚠️ No 'target' column found in uploaded CSV. Metrics unavailable.\")\n",
-    "\n",
-    "\n",
-    "with tab3:\n",
-    "    st.dataframe(df_input, use_container_width=True)"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "id": "acc2be3b-0e20-42e2-905a-7c942ff323cf",
-   "metadata": {},
-   "outputs": [],
-   "source": []
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "id": "18c07ce7-12ee-4f71-9108-50688627267f",
-   "metadata": {},
-   "outputs": [],
-   "source": []
-  }
- ],
- "metadata": {
-  "kernelspec": {
-   "display_name": "Python 3 (ipykernel)",
-   "language": "python",
-   "name": "python3"
-  },
-  "language_info": {
-   "codemirror_mode": {
-    "name": "ipython",
-    "version": 3
-   },
-   "file_extension": ".py",
-   "mimetype": "text/x-python",
-   "name": "python",
-   "nbconvert_exporter": "python",
-   "pygments_lexer": "ipython3",
-   "version": "3.14.3"
-  }
- },
- "nbformat": 4,
- "nbformat_minor": 5
-}
+import pandas as pd
+import streamlit as st
+import joblib
+import matplotlib.pyplot as plt
+import seaborn as sns
+from pathlib import Path
+from sklearn.metrics import (
+    accuracy_score,
+    precision_score,
+    recall_score,
+    f1_score,
+    roc_auc_score,
+    confusion_matrix,
+    classification_report,
+    matthews_corrcoef
+)
+
+# 1. Page Configuration
+st.set_page_config(
+    page_title="Breast Cancer Diagnostics",
+    page_icon="🩺",
+    layout="wide"
+)
+
+# Custom CSS for a professional "Card" look
+st.markdown("""
+    <style>
+        .block-container {padding-top: 2rem; padding-bottom: 2rem;}
+        div[data-testid="stMetric"] {
+            background-color: #f9f9f9;
+            border: 1px solid #e6e6e6;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .stDeployButton {display:none;}
+        footer {visibility: hidden;}
+    </style>
+""", unsafe_allow_html=True)
+
+# 2. Setup Paths
+BASE_DIR = Path(".")
+MODEL_DIR = BASE_DIR / "saved_models"
+
+# 3. Header Section
+c_head1, c_head2 = st.columns([1, 6])
+
+with c_head2:
+    st.title("Diagnostic AI Dashboard")
+    st.markdown("Breast Cancer Prediction & Model Evaluation Suite")
+
+st.markdown("---")
+
+# 4. THE CONTROL DECK (Replaces Sidebar)
+# We use an expander that is open by default.
+with st.expander("⚙️ **Configuration & Data Upload**", expanded=True):
+    col_conf1, col_conf2 = st.columns(2, gap="medium")
+    
+    with col_conf1:
+        st.subheader("1. Select Model")
+        if not MODEL_DIR.exists():
+            st.error("⚠️ Directory 'saved_models/' not found.")
+            st.stop()
+            
+        model_files = sorted([p.name for p in MODEL_DIR.glob("*.joblib")])
+        if not model_files:
+            st.error("⚠️ No models found.")
+            st.stop()
+            
+        selected_model = st.selectbox("Choose a pre-trained classifier:", model_files)
+        model_path = MODEL_DIR / selected_model
+        
+        try:
+            model = joblib.load(model_path)
+            st.caption(f"✅ Active Model: **{selected_model}**")
+        except Exception as e:
+            st.error(f"Error loading model: {e}")
+            st.stop()
+
+    with col_conf2:
+        st.subheader("2. Upload Patient Data")
+        uploaded_file = st.file_uploader("Upload CSV (Wisconsin Dataset format)", type=["csv"])
+
+# --- Main Logic ---
+if uploaded_file is None:
+    # Show a placeholder message when empty
+    st.info("👆 Please configure the model and upload a CSV file in the panel above to generate results.")
+    st.stop()
+
+# Load Data
+df_input = pd.read_csv(uploaded_file)
+
+# Feature Validation
+from sklearn.datasets import load_breast_cancer
+ref_data = load_breast_cancer()
+feature_names = list(ref_data.feature_names)
+missing_cols = [c for c in feature_names if c not in df_input.columns]
+
+if missing_cols:
+    st.error(f"❌ Input CSV is missing required columns:\n\n{', '.join(missing_cols[:5])}...")
+    st.stop()
+
+# Predict
+X = df_input[feature_names].values
+predictions = model.predict(X)
+df_output = df_input.copy()
+df_output["prediction"] = predictions
+
+has_proba = hasattr(model, "predict_proba")
+if has_proba:
+    proba = model.predict_proba(X)[:, 1]
+    df_output["probability_malignant"] = proba
+
+# --- Results Presentation ---
+st.markdown("### 📊 Analysis Results")
+tab1, tab2, tab3 = st.tabs(["Patient Predictions", "Model Performance", "Raw Data"])
+
+with tab1:
+    # Summary Cards
+    n_total = len(df_output)
+    n_mal = sum(predictions)
+    n_ben = n_total - n_mal
+    
+    # Use 4 columns for a wider spread of metrics
+    m1, m2, m3, m4 = st.columns(4)
+    m1.metric("Total Patients", n_total)
+    m2.metric("Benign Cases", n_ben)
+    m3.metric("Malignant Cases", n_mal, delta_color="inverse")
+    m4.metric("Risk Ratio", f"{(n_mal/n_total):.1%}")
+
+    st.markdown("<br>", unsafe_allow_html=True)
+    
+    # Styled Dataframe
+    cols_to_show = ["prediction"] 
+    if has_proba:
+        cols_to_show.append("probability_malignant")
+    cols_to_show += feature_names[:5]
+    
+    display_df = df_output[cols_to_show]
+    
+    def highlight_malignant(s):
+        return ['background-color: #ffe6e6' if v == 1 else '' for v in s]
+    
+    st.dataframe(
+        display_df.style.apply(highlight_malignant, subset=['prediction']),
+        use_container_width=True
+    )
+    
+    csv = df_output.to_csv(index=False).encode('utf-8')
+    st.download_button("⬇️ Download Results CSV", csv, "predictions.csv", "text/csv")
+
+with tab2:
+    if "target" in df_input.columns:
+        y_true = df_input["target"].values
+        y_pred = predictions
+
+        # Metrics Row
+
+        c1, c2, c3, c4, c5 = st.columns(5)
+
+        c1.metric("Accuracy", f"{accuracy_score(y_true, y_pred):.2%}")
+        c2.metric("Precision", f"{precision_score(y_true, y_pred, zero_division=0):.2%}")
+        c3.metric("Recall", f"{recall_score(y_true, y_pred, zero_division=0):.2%}")
+        c4.metric("F1 Score", f"{f1_score(y_true, y_pred, zero_division=0):.2%}")
+        c5.metric("MCC", f"{matthews_corrcoef(y_true, y_pred):.3f}")
+
+
+        st.divider()
+
+        # Layout: Confusion Matrix (Left) | AUC Gauge (Right)
+        col_cm, col_auc = st.columns([1, 2])
+
+        with col_cm:
+            st.markdown("**Confusion Matrix**")
+            cm = confusion_matrix(y_true, y_pred)
+
+            fig, ax = plt.subplots(figsize=(3, 3))
+            sns.heatmap(
+                cm,
+                annot=True,
+                fmt="d",
+                cmap="Blues",
+                cbar=False,
+                square=True,
+                xticklabels=["Benign", "Malignant"],
+                yticklabels=["Benign", "Malignant"],
+                ax=ax,
+            )
+            ax.set_xlabel("Predicted")
+            ax.set_ylabel("Actual")
+            fig.patch.set_alpha(0.0)
+            ax.patch.set_alpha(0.0)
+
+            st.pyplot(fig, use_container_width=False)
+
+        with col_auc:
+            st.markdown("**ROC / AUC Analysis**")
+            if has_proba:
+                auc = roc_auc_score(y_true, df_output["probability_malignant"])
+                st.metric("AUC Score", f"{auc:.4f}")
+                st.progress(auc)
+
+                if auc > 0.9:
+                    st.success("Excellent discrimination capability.")
+                elif auc > 0.7:
+                    st.warning("Acceptable discrimination capability.")
+                else:
+                    st.error("Poor model performance.")
+            else:
+                st.info("Model does not support probabilities.")
+
+        st.divider()
+
+        # ---- Classification Report (below the two-column layout) ----
+        st.markdown("**Classification Report**")
+
+        report_dict = classification_report(
+            y_true,
+            y_pred,
+            target_names=["Benign", "Malignant"],
+            output_dict=True,
+            zero_division=0,
+        )
+        report_df = pd.DataFrame(report_dict).transpose().round(3)
+
+        st.dataframe(report_df, use_container_width=True)
+
+    else:
+        st.warning("⚠️ No 'target' column found in uploaded CSV. Metrics unavailable.")
+
+
+with tab3:
+    st.dataframe(df_input, use_container_width=True)
