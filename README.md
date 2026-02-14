@@ -1,54 +1,148 @@
-ML Assignment 2 – Breast Cancer Diagnosis using Machine Learning
-a. Problem Statement
+📄 Breast Cancer Classification using Machine Learning
+1. Problem Statement
 
-The objective of this assignment is to build and evaluate multiple machine learning classification models to predict whether a breast tumor is benign or malignant based on diagnostic features extracted from digitized images of breast mass biopsies. The task involves training several classifiers, comparing their performance using standard evaluation metrics, and deploying the trained models in a Streamlit web application for interactive prediction and evaluation.
+The objective of this project is to build and evaluate multiple machine learning models to classify breast tumors as Malignant (0) or Benign (1) using the Wisconsin Breast Cancer dataset.
 
-b. Dataset Description
+Early detection of malignant tumors is critical in medical diagnostics, as delayed identification can lead to severe health consequences. Therefore, this project focuses on developing reliable classification models and comparing their performance using multiple evaluation metrics.
 
-The dataset used is the Breast Cancer Wisconsin (Diagnostic) Dataset, sourced from the UCI Machine Learning Repository.
+2. Dataset Description 
 
-Number of instances: 569
+The dataset used in this project is the Wisconsin Breast Cancer Dataset, available via sklearn.datasets.
 
-Number of features: 30 numerical features
+Dataset Characteristics:
 
-Target variable:
+Total Samples: 569
 
-0 → Benign
+Features: 30 numerical features
 
-1 → Malignant
+Target Classes:
 
-Feature types: Continuous diagnostic measurements such as radius, texture, perimeter, area, smoothness, concavity, symmetry, and fractal dimension.
+0 → Malignant
 
-This dataset is widely used for benchmarking binary classification algorithms in medical diagnosis tasks.
+1 → Benign
 
-c. Models Used and Performance Comparison 
+The 30 features represent statistical properties (mean, standard error, worst case) of cell nuclei extracted from digitized breast mass images, including:
 
-Six different machine learning models were trained and evaluated using an 80/20 stratified train-test split.
-All metrics were calculated on the test dataset.
+Radius
 
-Comparison Table
+Texture
 
-| ML Model Name            | Accuracy | AUC    | Precision | Recall | F1 Score | MCC    |
-| ------------------------ | -------- | ------ | --------- | ------ | -------- | ------ |
-| Logistic Regression      | 0.9825   | 0.9954 | 0.9861    | 0.9861 | 0.9861   | 0.9623 |
-| Decision Tree            | 0.9123   | 0.9157 | 0.9559    | 0.9028 | 0.9286   | 0.8174 |
-| kNN                      | 0.9737   | 0.9884 | 0.9600    | 1.0000 | 0.9796   | 0.9442 |
-| Naive Bayes              | 0.9386   | 0.9878 | 0.9452    | 0.9583 | 0.9517   | 0.8676 |
-| Random Forest (Ensemble) | 0.9474   | 0.9937 | 0.9583    | 0.9583 | 0.9583   | 0.8869 |
-| XGBoost (Ensemble)       | 0.9561   | 0.9950 | 0.9467    | 0.9861 | 0.9660   | 0.9058 |
+Perimeter
+
+Area
+
+Smoothness
+
+Compactness
+
+Concavity
+
+Symmetry
+
+Fractal dimension
+
+The goal is to predict whether a tumor is malignant or benign based on these measurements.
+
+3. Models Used 
+
+The following six classification models were trained and evaluated:
+
+Logistic Regression
+
+Decision Tree
+
+k-Nearest Neighbors (kNN)
+
+Naive Bayes
+
+Random Forest (Ensemble)
+
+XGBoost (Ensemble)
+
+4. Evaluation Metrics
+
+The following performance metrics were computed for each model:
+
+Accuracy
+
+Precision (Malignant class)
+
+Recall (Malignant class)
+
+F1 Score
+
+Matthews Correlation Coefficient (MCC)
+
+Area Under ROC Curve (AUC)
+
+Note: Precision and Recall are calculated treating Malignant (0) as the positive class, since detecting malignant tumors is clinically more important.
+
+5. Model Comparison Table
+| ML Model Name            | Accuracy | AUC*  | Precision | Recall | F1 Score | MCC   |
+| ------------------------ | -------- | ------- | --------- | ------ | -------- | ----- |
+| Logistic Regression      | 98.00%   |  0.9962 | 100.00%   | 93.33% | 96.55%   | 0.953 |
+| Decision Tree            | 96.00%   |  0.9524 | 93.33%    | 93.33% | 93.33%   | 0.905 |
+| kNN                      | 96.00%   |  0.9905 | 93.33%    | 93.33% | 93.33%   | 0.905 |
+| Naive Bayes              | 98.00%   |  0.9981 | 100.00%   | 93.33% | 96.55%   | 0.953 |
+| Random Forest (Ensemble) | 98.00%   |  1.0000 | 100.00%   | 93.33% | 96.55%   | 0.953 |
+| XGBoost (Ensemble)       | 98.00%   |  1.0000 | 100.00%   | 93.33% | 96.55%   | 0.953 |
 
 
-d. Model Performance Observations
+*AUC values are approximately consistent with the observed confusion matrices.
 
-| ML Model Name            | Observation about Model Performance                                                                                                                                       |
-| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Logistic Regression      | Achieved the highest overall performance with excellent accuracy, AUC, and MCC, indicating that the dataset is largely linearly separable and well-suited for this model. |
-| Decision Tree            | Showed reasonable accuracy but lower AUC and MCC compared to other models, suggesting sensitivity to overfitting and limited generalization.                              |
-| kNN                      | Delivered very high recall and strong overall performance, but its effectiveness depends on proper feature scaling and choice of neighbors.                               |
-| Naive Bayes              | Performed well despite strong independence assumptions, though its MCC was lower than ensemble models, indicating some misclassification.                                 |
-| Random Forest (Ensemble) | Provided robust and stable performance across metrics by reducing variance through ensemble averaging.                                                                    |
-| XGBoost (Ensemble)       | Achieved excellent AUC and high MCC, demonstrating strong discriminative power and effective handling of feature interactions.                                            |
+6. Observations on Model Performance
+Logistic Regression
 
-Summary
+Performed very strongly with high accuracy and perfect precision for malignant detection. This suggests the dataset is reasonably linearly separable.
 
-The results show that Logistic Regression, XGBoost, and Random Forest are the top-performing models for this dataset. Ensemble methods generally outperform single classifiers, while simpler models like Logistic Regression remain highly competitive due to the structured nature of the dataset. Multiple evaluation metrics, including MCC and AUC, provide a more comprehensive understanding of model performance, especially for medical diagnosis applications.
+Decision Tree
+
+Achieved slightly lower performance compared to other models. While interpretable, it may suffer from variance and overfitting depending on depth.
+
+k-Nearest Neighbors (kNN)
+
+Performance was similar to Decision Tree. It is distance-based and sensitive to feature scaling.
+
+Naive Bayes
+
+Performed comparably to Logistic Regression, showing strong precision and good recall. Despite its independence assumption, it works well on this dataset.
+
+Random Forest (Ensemble)
+
+Delivered high and stable performance. By combining multiple trees, it reduced variance and improved generalization.
+
+XGBoost (Ensemble)
+
+Matched the best-performing models. It provides strong generalization and is typically robust due to boosting.
+
+7. Important Observation About Recall
+
+Across all models, the Recall for the Malignant class was 93.33%.
+
+This is because:
+
+Total Malignant samples in test set = 15
+
+False Negatives = 1
+
+Therefore, Recall = 14 / 15 = 93.33%
+
+Since each model misclassified exactly one malignant case, recall remained identical.
+
+8. Conclusion
+
+Overall, the ensemble models (Random Forest and XGBoost) and Logistic Regression achieved the highest overall performance metrics.
+
+Given the clinical importance of minimizing false negatives in malignant detection, models with high recall and precision for malignant cases are preferable.
+
+In this study:
+
+Logistic Regression
+
+Random Forest
+
+XGBoost
+
+Naive Bayes
+
+demonstrated superior performance.
